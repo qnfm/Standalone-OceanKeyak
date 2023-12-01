@@ -4,9 +4,6 @@ set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
 
 project(Keyak C)
 
-################################################################################
-# Set target arch type if empty. Visual studio solution generator provides it.
-################################################################################
 if(NOT CMAKE_VS_PLATFORM_NAME)
     set(CMAKE_VS_PLATFORM_NAME "x64")
 endif()
@@ -25,35 +22,9 @@ set(CMAKE_CONFIGURATION_TYPES
     "Release"
     CACHE STRING "" FORCE
 )
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+find_package(Sodium REQUIRED)
 
-################################################################################
-# Global compiler options
-################################################################################
-if(MSVC)
-    # remove default flags provided with CMake for MSVC
-    set(CMAKE_C_FLAGS "")
-    set(CMAKE_C_FLAGS_DEBUG "")
-    set(CMAKE_C_FLAGS_RELEASE "")
-endif()
-
-################################################################################
-# Global linker options
-################################################################################
-if(MSVC)
-    # remove default flags provided with CMake for MSVC
-    set(CMAKE_EXE_LINKER_FLAGS "")
-    set(CMAKE_MODULE_LINKER_FLAGS "")
-    set(CMAKE_SHARED_LINKER_FLAGS "")
-    set(CMAKE_STATIC_LINKER_FLAGS "")
-    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS}")
-    set(CMAKE_MODULE_LINKER_FLAGS_DEBUG "${CMAKE_MODULE_LINKER_FLAGS}")
-    set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS}")
-    set(CMAKE_STATIC_LINKER_FLAGS_DEBUG "${CMAKE_STATIC_LINKER_FLAGS}")
-    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS}")
-    set(CMAKE_MODULE_LINKER_FLAGS_RELEASE "${CMAKE_MODULE_LINKER_FLAGS}")
-    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS}")
-    set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "${CMAKE_STATIC_LINKER_FLAGS}")
-endif()
 
 ################################################################################
 # Nuget packages function stub.
@@ -64,15 +35,7 @@ function(use_package TARGET PACKAGE VERSION)
                     "for target \"${TARGET}\" is ignored!")
 endfunction()
 
-################################################################################
-# Common utils
-################################################################################
-include(CMake/Utils.cmake)
 
-################################################################################
-# Additional Global Settings(add specific info there)
-################################################################################
-include(CMake/GlobalSettingsInclude.cmake OPTIONAL)
 
 ################################################################################
 # Use solution folders feature
@@ -120,6 +83,7 @@ set(Header_Files
     "brg_endian.h"
     "config.h"
     "crypto_aead.h"
+    "encrypt.h"
     "KeccakP-1600-times4-SIMD256.c"
     "KeccakP-1600-times4-SnP.h"
     "KeccakP-1600-unrolling.macros"
@@ -127,7 +91,6 @@ set(Header_Files
     "Keyakv2.inc"
     "Motorist.inc"
     "SIMD256-config.h"
-    "test_crypto_aead.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
@@ -135,7 +98,6 @@ set(Source_Files
     "encrypt.c"
     "Keyak.c"
     "main.c"
-    "test_crypto_aead.c"
 )
 source_group("Source Files" FILES ${Source_Files})
 
@@ -149,55 +111,75 @@ set(ALL_FILES
 ################################################################################
 add_executable(${PROJECT_NAME} ${ALL_FILES})
 
-use_props(${PROJECT_NAME} "${CMAKE_CONFIGURATION_TYPES}" "${DEFAULT_CXX_PROPS}")
 set(ROOT_NAMESPACE Keyak)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    VS_GLOBAL_KEYWORD "Win32Proj"
-)
-if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        INTERPROCEDURAL_OPTIMIZATION_RELEASE "TRUE"
-    )
-elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        INTERPROCEDURAL_OPTIMIZATION_RELEASE "TRUE"
-    )
-endif()
-################################################################################
-# Compile definitions
-################################################################################
-if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        "$<$<CONFIG:Debug>:"
-            "_DEBUG"
-        ">"
-        "$<$<CONFIG:Release>:"
-            "NDEBUG"
-        ">"
-        "_CONSOLE;"
-        "UNICODE;"
-        "_UNICODE"
-    )
-elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        "$<$<CONFIG:Debug>:"
-            "_DEBUG"
-        ">"
-        "$<$<CONFIG:Release>:"
-            "NDEBUG"
-        ">"
-        "WIN32;"
-        "_CONSOLE;"
-        "UNICODE;"
-        "_UNICODE"
-    )
-endif()
+
 
 ################################################################################
 # Compile and link options
 ################################################################################
 if(MSVC)
+    
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        VS_GLOBAL_KEYWORD "Win32Proj"
+    )
+    if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            INTERPROCEDURAL_OPTIMIZATION_RELEASE "TRUE"
+        )
+    elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            INTERPROCEDURAL_OPTIMIZATION_RELEASE "TRUE"
+        )
+    endif()
+    ################################################################################
+    # Include directories
+    ################################################################################
+    if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+        target_include_directories(${PROJECT_NAME} PUBLIC
+            "${CMAKE_CURRENT_SOURCE_DIR}/"
+            "D:/dev/c/libsodium/include"
+        )
+    endif()
+
+    ################################################################################
+    # Compile definitions
+    ################################################################################
+
+
+    if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+        target_compile_definitions(${PROJECT_NAME} PRIVATE
+            "$<$<CONFIG:Debug>:"
+                "_CRT_SECURE_NO_WARNINGS;"
+                "_DEBUG"
+            ">"
+            "$<$<CONFIG:Release>:"
+                "NDEBUG"
+            ">"
+            "_CONSOLE;"
+            "UNICODE;"
+            "_UNICODE"
+        )
+    elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
+        target_compile_definitions(${PROJECT_NAME} PRIVATE
+            "$<$<CONFIG:Debug>:"
+                "_DEBUG"
+            ">"
+            "$<$<CONFIG:Release>:"
+                "NDEBUG"
+            ">"
+            "WIN32;"
+            "_CONSOLE;"
+            "UNICODE;"
+            "_UNICODE"
+        )
+    endif()
+
+    if (sodium_USE_STATIC_LIBS)
+        string(APPEND _LINK_TYPE "/MT")
+    else()
+        string(APPEND _LINK_TYPE "/MT")
+    endif()
     if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
         target_compile_options(${PROJECT_NAME} PRIVATE
             $<$<CONFIG:Release>:
@@ -208,7 +190,8 @@ if(MSVC)
             /sdl;
             /W3;
             ${DEFAULT_CXX_DEBUG_INFORMATION_FORMAT};
-            ${DEFAULT_CXX_EXCEPTION_HANDLING}
+            ${DEFAULT_CXX_EXCEPTION_HANDLING};
+            ${_LINK_TYPE}
         )
     elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
         target_compile_options(${PROJECT_NAME} PRIVATE
@@ -220,7 +203,8 @@ if(MSVC)
             /sdl;
             /W3;
             ${DEFAULT_CXX_DEBUG_INFORMATION_FORMAT};
-            ${DEFAULT_CXX_EXCEPTION_HANDLING}
+            ${DEFAULT_CXX_EXCEPTION_HANDLING};
+            ${_LINK_TYPE}
         )
     endif()
     if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
@@ -250,5 +234,11 @@ if(MSVC)
             /SUBSYSTEM:CONSOLE
         )
     endif()
+else()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx2")
+    # target_compile_definitions(${PROJECT_NAME} PRIVATE "-msse2")
 endif()
+
+
+target_link_libraries(${PROJECT_NAME} PUBLIC sodium PRIVATE "${ADDITIONAL_LIBRARY_DEPENDENCIES}")
 
