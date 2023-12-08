@@ -15,11 +15,19 @@ To the extent possible under law, the implementer has waived all copyright
 and related or neighboring rights to the source code in this file.
 http://creativecommons.org/publicdomain/zero/1.0/
 */
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
 
-#if defined _WIN32
 #ifndef SODIUM_STATIC
 #define SODIUM_STATIC
 #endif
+
+#ifdef _WIN32
+#define xstat _stat64
+#else
+#define xstat stat
+
 #endif
 
 #define ADsize 20
@@ -50,10 +58,6 @@ int main(int argc, char **argv) {
   FILE *output_file, *input_file, *key_file;
   int err;
 
-  struct stat sbk;
-  struct stat sbpt;
-  struct stat sbct;
-
   unsigned char *plaintext;
   unsigned char *ciphertext;
   unsigned char *key;
@@ -64,6 +68,11 @@ int main(int argc, char **argv) {
     perror("Failed to init libsodium\n");
     exit(EXIT_FAILURE);
   }
+
+  struct xstat sbk;
+  struct xstat sbpt;
+  struct xstat sbct;
+
   // encryption mode args:{plaintext filename}
   if (argc == 2) {
     strcpy(ptstr, argv[1]);
@@ -73,6 +82,7 @@ int main(int argc, char **argv) {
     strcat(kstr, ".key");
 
 #if defined _WIN32
+
     err = fopen_s(&key_file, kstr, "wb");
     if (err != 0) perror("The key file was not opened");
 
@@ -81,7 +91,9 @@ int main(int argc, char **argv) {
 
     err = fopen_s(&output_file, ctstr, "wb");
     if (err != 0) perror("The output was not opened");
+
 #else
+
     key_file = fopen(kstr, "wb");
     if (!key_file) perror("The key file was not opened");
 
@@ -91,13 +103,15 @@ int main(int argc, char **argv) {
     output_file = fopen(ctstr, "wb");
     if (!output_file) perror("The output was not opened");
     if (!key_file || !input_file || !output_file) return -1;
+
 #endif
 
-    if (stat(kstr, &sbk) == -1 || stat(ptstr, &sbpt) == -1 ||
-        stat(ctstr, &sbct) == -1) {
+    if (xstat(kstr, &sbk) == -1 || xstat(ptstr, &sbpt) == -1 ||
+        xstat(ctstr, &sbct) == -1) {
       perror("stat");
       exit(EXIT_FAILURE);
     }
+
     if (sbk.st_size != 0 || sbpt.st_size == 0 || sbct.st_size != 0) {
       perror("The key/ciphertext is not empty or the plaintext file is empty");
       exit(EXIT_FAILURE);
