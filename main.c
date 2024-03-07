@@ -1,27 +1,8 @@
-/*
-The eXtended Keccak Code Package (XKCP)
-https://github.com/XKCP/XKCP
-
-Keyak, designed by Guido Bertoni, Joan Daemen, Michaël Peeters, Gilles Van
-Assche and Ronny Van Keer.
-
-Implementation by Gilles Van Assche and Ronny Van Keer, hereby denoted as "the
-implementer".
-
-For more information, feedback or questions, please refer to the Keccak Team
-website: https://keccak.team/
-
-To the extent possible under law, the implementer has waived all copyright
-and related or neighboring rights to the source code in this file.
-http://creativecommons.org/publicdomain/zero/1.0/
-*/
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
 #endif
 
-#ifndef SODIUM_STATIC
-#define SODIUM_STATIC
-#endif
+#define  _CRT_SECURE_NO_WARNINGS
 
 #ifdef _WIN32
 #define xstat _stat64
@@ -37,7 +18,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #include <sys/stat.h>
 
 #include "encrypt.h"
-#include "sodium.h"
+#include <sodium.h>
 
 int main(int argc, char **argv) {
   const size_t keysize = 16, noncesize = 16, tagsize = 16;
