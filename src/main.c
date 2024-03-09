@@ -1,3 +1,7 @@
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
 #endif
@@ -103,7 +107,7 @@ int main(int argc, char **argv) {
     // keyfile is: key||nonce
     key = malloc(keysize + noncesize);
 
-    randombytes_buf(key, keysize);
+    randombytes_buf(key, keysize + noncesize);
     fwrite(key, sizeof(unsigned char), keysize + noncesize, key_file);
 
     memcpy(nonce, key + keysize, 16);
