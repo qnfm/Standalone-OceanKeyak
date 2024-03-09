@@ -1,20 +1,8 @@
-/*
-The eXtended Keccak Code Package (XKCP)
-https://github.com/XKCP/XKCP
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
 
-Keyak, designed by Guido Bertoni, Joan Daemen, Michaël Peeters, Gilles Van
-Assche and Ronny Van Keer.
 
-Implementation by Gilles Van Assche and Ronny Van Keer, hereby denoted as "the
-implementer".
-
-For more information, feedback or questions, please refer to the Keccak Team
-website: https://keccak.team/
-
-To the extent possible under law, the implementer has waived all copyright
-and related or neighboring rights to the source code in this file.
-http://creativecommons.org/publicdomain/zero/1.0/
-*/
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
 #endif
@@ -122,7 +110,7 @@ int main(int argc, char **argv) {
     // keyfile is: key||nonce
     key = malloc(keysize + noncesize);
 
-    randombytes_buf(key, keysize);
+    randombytes_buf(key, keysize + noncesize);
     fwrite(key, sizeof(unsigned char), keysize + noncesize, key_file);
 
     memcpy(nonce, key + keysize, 16);
