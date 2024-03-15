@@ -6,7 +6,7 @@ project(OceanKeyak C)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
+set(sodium_USE_STATIC_LIBS ON)
 find_package(Sodium REQUIRED)
 
 ################################################################################
