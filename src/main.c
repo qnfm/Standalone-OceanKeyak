@@ -1,19 +1,17 @@
-#ifdef _MSC_VER
+#ifdef _WIN32
 #define _CRT_SECURE_NO_WARNINGS
-#endif
+
+#include <io.h>
+#include <fcntl.h>
+
+#else
 
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
 #endif
 
-#define  _CRT_SECURE_NO_WARNINGS
-
-#ifdef _WIN32
-#define xstat _stat64
-#else
-#define xstat stat
-
 #endif
+
 
 #define ADsize 20
 
@@ -57,11 +55,6 @@ int main(int argc, char **argv) {
 
     int retcode;
 
-
-    struct xstat sbk;
-    struct xstat sbpt;
-    struct xstat sbct;
-
     // encryption mode args:{plaintext filename}
     if (argc == 2) {
         strcpy(ptstr, argv[1]);
@@ -72,14 +65,24 @@ int main(int argc, char **argv) {
 
 #if defined _WIN32
 
+        int fd;
+        _sopen_s(&fd, "foo.bin", _O_RDONLY, _SH_DENYRW, _S_IREAD);
+
         err = fopen_s(&key_file, kstr, "wb");
         if (err != 0) perror("The key file was not opened");
+
+        err = _sopen_s(&fd, ptstr, _O_RDONLY, _SH_DENYRW, _S_IREAD);
+        if (err != 0) perror("The input file was not opened");
+        __int64 ptsz = _filelengthi64(fd);
+        err = _close(fd);
+        if (err != 0) perror("Failed to closed the input file");
 
         err = fopen_s(&input_file, ptstr, "rb");
         if (err != 0) perror("The input file was not opened");
 
         err = fopen_s(&output_file, ctstr, "wb");
         if (err != 0) perror("The output was not opened");
+
 
 #else
 
@@ -93,21 +96,12 @@ int main(int argc, char **argv) {
         if (!output_file) perror("The output was not opened");
         if (!key_file || !input_file || !output_file) return -1;
 
+        off_t ptsz = ftello(input_file);
+
 #endif
 
-        if (xstat(kstr, &sbk) == -1 || xstat(ptstr, &sbpt) == -1 ||
-            xstat(ctstr, &sbct) == -1) {
-            perror("stat");
-            exit(EXIT_FAILURE);
-        }
-
-        if (sbk.st_size != 0 || sbpt.st_size == 0 || sbct.st_size != 0) {
-            perror("The key/ciphertext is not empty or the plaintext file is empty");
-            exit(EXIT_FAILURE);
-        }
-
-        plaintext = malloc(sbpt.st_size);
-        ciphertext = malloc(sbpt.st_size + tagsize);
+        plaintext = malloc(ptsz);
+        ciphertext = malloc(ptsz + tagsize);
         // keyfile is: key||nonce
 
         size_t wholekeysize = keysize + noncesize;
@@ -121,14 +115,14 @@ int main(int argc, char **argv) {
         memcpy(nonce, key + keysize, 16);
 
 #if defined _WIN32
-        fread_s(plaintext, sbpt.st_size, sbpt.st_size, sizeof(unsigned char),
+        fread_s(plaintext, ptsz, ptsz, sizeof(unsigned char),
                 input_file);
 #else
-        fread(plaintext, sizeof(unsigned char), sbpt.st_size, input_file);
+        fread(plaintext, sizeof(unsigned char), ptsz, input_file);
 #endif
 
         unsigned long long clen;
-        retcode = crypto_aead_encrypt(ciphertext, &clen, plaintext, sbpt.st_size,
+        retcode = crypto_aead_encrypt(ciphertext, &clen, plaintext, ptsz,
                                       AD, ADsize, 0, nonce, key);
         if (retcode != 0) {
             perror("!!! crypto_aead_encrypt() did not return 0.\n");
@@ -143,6 +137,14 @@ int main(int argc, char **argv) {
         strncpy(ptstr, ctstr, strlen(argv[2]) + 1 - sizeof(".Keyak"));
 
 #if defined _WIN32
+
+        int fd;
+        err = _sopen_s(&fd, ctstr, _O_RDONLY, _SH_DENYRW, _S_IREAD);
+        if (err != 0) perror("The input file was not opened");
+        __int64 ctsz = _filelengthi64(fd);
+        err = _close(fd);
+        if (err != 0) perror("Failed to closed the input file");
+
         err = fopen_s(&key_file, kstr, "rb");
         if (err != 0) perror("Key file was not opened");
 
@@ -161,44 +163,36 @@ int main(int argc, char **argv) {
         output_file = fopen(ptstr, "wb");
         if (!output_file) perror("The output was not opened");
         if (!key_file || !input_file || !output_file) return -1;
+
+        off_t ksz = ftello(key_file);
+        off_t ctsz = ftello(input_file);
+
 #endif
 
-        if (stat(kstr, &sbk) == -1 || stat(ptstr, &sbpt) == -1 ||
-            stat(ctstr, &sbct) == -1) {
-            perror("stat");
-            exit(EXIT_FAILURE);
-        }
-
-        if (sbk.st_size == 0 || sbct.st_size == 0 || sbpt.st_size != 0) {
-            perror("The key/ciphertext is empty or the plaintext file is not empty");
-            exit(EXIT_FAILURE);
-        }
-
-        plaintext = malloc(sbct.st_size - tagsize);
-        ciphertext = malloc(sbct.st_size);
+        plaintext = malloc(ctsz - tagsize);
+        ciphertext = malloc(ctsz);
         // keyfile is: key||nonce
         key = malloc(keysize + noncesize);
 
 #if defined _WIN32
-        fread_s(key, sbk.st_size, sizeof(unsigned char), sbk.st_size, key_file);
-        fread_s(ciphertext, sbct.st_size, sizeof(unsigned char), sbct.st_size,
-                input_file);
+        fread_s(key, 32, sizeof(unsigned char), 32, key_file);
+        fread_s(ciphertext, ctsz, sizeof(unsigned char), ctsz, input_file);
 #else
-        fread(key, sizeof(unsigned char), sbk.st_size, key_file);
-        fread(ciphertext, sizeof(unsigned char), sbct.st_size, input_file);
+        fread(key, sizeof(unsigned char), ksz, key_file);
+        fread(ciphertext, sizeof(unsigned char), ctsz, input_file);
 #endif
 
         memcpy(nonce, key + keysize, 16);
 
         unsigned long long mlen;
-        retcode = crypto_aead_decrypt(plaintext, &mlen, 0, ciphertext, sbct.st_size,
+        retcode = crypto_aead_decrypt(plaintext, &mlen, 0, ciphertext, ctsz,
                                       AD, ADsize, nonce, key);
         if (retcode != 0) {
             perror("!!! crypto_aead_decrypt() did not return 0");
             exit(EXIT_FAILURE);
         }
 
-        if (mlen != sbct.st_size - tagsize) {
+        if (mlen != ctsz - tagsize) {
             perror("!!! plaintext length mistach.");
             exit(EXIT_FAILURE);
         }
